@@ -1,5 +1,5 @@
 from flask import Flask, request
-from flask.ext.jsonify import jsonify
+from flask_jsonpify import jsonify
 from flask_restful import Resource, Api
 from sqlalchemy import create_engine
 from json import dumps
@@ -27,3 +27,10 @@ class Employee_Name(Resource):
         query = conn.execute("select * from employees where EmployeeID = %d " %int(employee_id)) # executes SQL query and returns result in JSON
         result = {'data': [dict(zip(tuple (query.keys()), i)) for i in query.cursor]} # fetches first column that is Employee ID
         return jsonify(result)
+
+api.add_resource(Employees, '/employees') # Route 1
+api.add_resource(Tracks, '/tracks') # Route 2
+api.add_resource(Employee_Name, '/employees/<employee_id>') # Route 3
+
+if __name__ == '__main__':
+    app.run(port='5002')
