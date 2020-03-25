@@ -1,47 +1,62 @@
 import flask
 from flask import request, jsonify
+import sqlite3
 
 app = flask.Flask(__name__)
 app.config["DEBUG"] = True
 
-books = [
-    {'id': 0,
-     'title': 'The Hobbit',
-     'author': 'J.R.R. Tolkien',
-     'first_sentence': 'Not a nasty, dirty, wet hole, filled with the ends of worms and an oozy smell, nor yet a dry, bare, sandy hole with nothing in it to sit down on or to eat: it was a hobbit-hole, and that means comfort.',
-     'year_published': '1937'},
-    {'id': 1,
-     'title': 'The Ones Who Walk Away From Omelas',
-     'author': 'Ursula K. Le Guin',
-     'first_sentence': 'With a clamor of bells that set the swallows soaring, the Festival of Summer came to the city Omelas, bright-towered by the sea.',
-     'published': '1973'},
-    {'id': 2,
-     'title': 'Dhalgren',
-     'author': 'Samuel R. Delany',
-     'first_sentence': 'to wound the autumnal city.',
-     'published': '1975'}
-]
+def dict_factory(cursor, row):
+    d = {}
+    for idx, col in enumerate(cursor.description):
+        d[col[0]] = row[idx]
+    return d
 
 @app.route('/', methods=['GET'])
 def home():
-    return "<h1>Reading Archive</h1><p>This site is a prototype API for the novels.</p>"
+    return "<h1>Science Fiction Novel Archive</h1><p>This site is a prototype API for science fiction novels.</p>"
 
-@app.route('/api/resources/books/all', methods=['GET'])
+@app.route('/api/v1/resources/books/all', methods=['GET'])
 def api_all():
-    return jsonify(books)
+    conn = sqlite3.connect('books.db')
+    conn.row_factory = dict_factory
+    cur = conn.cursor()
+    all_books = cur.execute('SELECT * FROM books;').fetchall()
+    return jsonify(all_books)
 
-@app.route('/api/resources/books', methods=['GET'])
-def api_id():
-    if 'id' in request.args:
-        id = int(request.args['id'])
-    else:
-        return "Error: No ID field provided. Please specify ID."
+@app.errorhandler(404)
+def page_not_found(e):
+    return "<h1>404</h1><p>The resource could not be found.</p>", 404
 
-    results = [] # Here we will store the results 
+@app.route('/api/v1/resources/books', methods=['GET'])
+def api_filter():
+    query_parameters = request.args
 
-    for book in books:
-        if book['id'] == id:
-            results.append(book)
+    id = query_parameters.get('id')
+    published = query_parameters.get('published')
+    author = query_parameters.get('author')
+
+    query = "SELECT * FROM books WHERE"
+    to_filter = []
+
+    if id:
+        query += ' id=? AND'
+        to_filter.append(id)
+    if published:
+        query += ' published=? AND'
+        to_filter.append(published)
+    if author:
+        query += ' author=? AND'
+        to_filter.append(author)
+    if not (id or published or author):
+        return page_not_found(404)
+
+    query = query[:-4] + ';'
+    
+    conn = sqlite3.connect('books.db')
+    conn.row_factory = dict_factory
+    cur = conn.cursor()
+
+    results = cur.execute(query, to_filter).fetchall()
 
     return jsonify(results)
 
