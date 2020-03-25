@@ -30,4 +30,19 @@ def home():
 def api_all():
     return jsonify(books)
 
+@app.route('/api/resources/books', methods=['GET'])
+def api_id():
+    if 'id' in request.args:
+        id = int(request.args['id'])
+    else:
+        return "Error: No ID field provided. Please specify ID."
+
+    results = [] # Here we will store the results 
+
+    for book in books:
+        if book['id'] == id:
+            results.append(book)
+
+    return jsonify(results)
+
 app.run()
